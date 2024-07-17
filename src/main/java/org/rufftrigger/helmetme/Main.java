@@ -124,11 +124,26 @@ public class Main extends JavaPlugin implements Listener {
 
     private void simulateShieldBlock(Player player, Location location) {
         try {
+            ItemStack helmet = player.getInventory().getHelmet();
+            if (helmet == null) {
+                return; // No helmet equipped, nothing to simulate
+            }
+
+            Material helmetMaterial = helmet.getType();
+            if (helmetMaterial == null) {
+                getLogger().warning("Helmet material is null for player: " + player.getName());
+                return;
+            }
+
             // Play shield block sound
             player.getWorld().playSound(location, Sound.ITEM_SHIELD_BLOCK, 1.0f, 1.0f);
 
             // Display block particle effect
-            player.getWorld().spawnParticle(Particle.ASH, location, 10, 0.3, 0.3, 0.3, player.getInventory().getHelmet().getType().createBlockData());
+            if (helmetMaterial.isBlock()) {
+                player.getWorld().spawnParticle(Particle.DUST, location, 10, 0.3, 0.3, 0.3, 0.1, helmetMaterial.createBlockData());
+            } else {
+                player.getWorld().spawnParticle(Particle.ASH, location, 10, 0.3, 0.3, 0.3);
+            }
 
             // Send message to player
             player.sendMessage("Your helmet blocked the arrow!");
@@ -136,6 +151,7 @@ public class Main extends JavaPlugin implements Listener {
             getLogger().log(Level.SEVERE, "Error in simulateShieldBlock", e);
         }
     }
+
 
     private void reflectArrow(Arrow arrow, ProjectileSource shooter) {
         try {
