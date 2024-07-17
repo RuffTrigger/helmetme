@@ -1,0 +1,5 @@
+name: HelmetMe
+version: '1.0'
+main: org.rufftrigger.helmetme.Mail
+api-version: '1.21'
+description: EternalHarvest is a Bukkit/Spigot plugin designed to simulate the growth of plants (crops, saplings) even when the server is offline or the chunk is unloaded.
