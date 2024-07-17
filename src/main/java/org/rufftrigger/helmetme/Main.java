@@ -20,11 +20,14 @@ import org.bukkit.util.Vector;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.Damageable;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 
 public class Main extends JavaPlugin implements Listener {
 
     private int helmetDamage;
+    private List<Material> blockedHelmetMaterials;
 
     @Override
     public void onEnable() {
@@ -50,9 +53,28 @@ public class Main extends JavaPlugin implements Listener {
         try {
             FileConfiguration config = getConfig();
             helmetDamage = config.getInt("helmetDamage", 1);
+
+            blockedHelmetMaterials = new ArrayList<>();
+            List<String> materialNames = config.getStringList("blockedHelmetMaterials");
+            for (String materialName : materialNames) {
+                Material material = Material.matchMaterial(materialName);
+                if (material != null) {
+                    blockedHelmetMaterials.add(material);
+                } else {
+                    getLogger().warning("Invalid material name in blockedHelmetMaterials: " + materialName);
+                }
+            }
         } catch (Exception e) {
             getLogger().log(Level.SEVERE, "Error loading configuration", e);
         }
+    }
+
+    private boolean isHelmetBlocked(ItemStack helmet) {
+        if (helmet == null) {
+            return false;
+        }
+        Material helmetMaterial = helmet.getType();
+        return blockedHelmetMaterials.contains(helmetMaterial);
     }
 
     @EventHandler
@@ -73,7 +95,7 @@ public class Main extends JavaPlugin implements Listener {
 
                     if (hitY >= headStartY && hitY <= headEndY) {
                         ItemStack helmet = player.getInventory().getHelmet();
-                        if (helmet != null) {
+                        if (isHelmetBlocked(helmet)) {
                             // Simulate shield block effects
                             simulateShieldBlock(player, arrow.getLocation());
 
@@ -103,7 +125,7 @@ public class Main extends JavaPlugin implements Listener {
                     // Check if the arrow hits the head area
                     if (arrow.getLocation().distance(player.getEyeLocation()) < 1.5) {
                         ItemStack helmet = player.getInventory().getHelmet();
-                        if (helmet != null) {
+                        if (isHelmetBlocked(helmet)) {
                             // Simulate shield block effects
                             simulateShieldBlock(player, arrow.getLocation());
                             event.setCancelled(true);
@@ -151,7 +173,6 @@ public class Main extends JavaPlugin implements Listener {
             getLogger().log(Level.SEVERE, "Error in simulateShieldBlock", e);
         }
     }
-
 
     private void reflectArrow(Arrow arrow, ProjectileSource shooter) {
         try {

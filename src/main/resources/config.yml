@@ -1,2 +1,5 @@
 # HelmetMe configuration
 helmetDamage: 1
+blockedHelmetMaterials:
+  - IRON_HELMET
+  - DIAMOND_HELMET
