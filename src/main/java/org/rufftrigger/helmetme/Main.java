@@ -1,8 +1,10 @@
 package org.rufftrigger.helmetme;
 
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
@@ -15,8 +17,15 @@ import org.bukkit.util.Vector;
 
 public class Main extends JavaPlugin implements Listener {
 
+    private int helmetDamage;
+
     @Override
     public void onEnable() {
+        // Save the default config.yml if it doesn't exist
+        saveDefaultConfig();
+        // Load configuration
+        loadConfiguration();
+
         getServer().getPluginManager().registerEvents(this, this);
         getLogger().info("HelmetMe plugin has been enabled!");
     }
@@ -24,6 +33,11 @@ public class Main extends JavaPlugin implements Listener {
     @Override
     public void onDisable() {
         getLogger().info("HelmetMe plugin has been disabled.");
+    }
+
+    private void loadConfiguration() {
+        FileConfiguration config = getConfig();
+        helmetDamage = config.getInt("helmetDamage", 1);
     }
 
     @EventHandler
@@ -49,6 +63,9 @@ public class Main extends JavaPlugin implements Listener {
 
                         // Reflect the arrow
                         reflectArrow(arrow, player);
+
+                        // Damage the helmet
+                        damageHelmet(player, helmet);
                     }
                 }
             }
@@ -73,6 +90,9 @@ public class Main extends JavaPlugin implements Listener {
 
                         // Reflect the arrow
                         reflectArrow(arrow, player);
+
+                        // Damage the helmet
+                        damageHelmet(player, helmet);
                     }
                 }
             }
@@ -85,6 +105,7 @@ public class Main extends JavaPlugin implements Listener {
 
         // Display block particle effect
         player.getWorld().spawnParticle(Particle.ASH, location, 10, 0.3, 0.3, 0.3, player.getInventory().getHelmet().getType().createBlockData());
+
         // Send message to player
         player.sendMessage("Your helmet blocked the arrow!");
     }
@@ -101,5 +122,17 @@ public class Main extends JavaPlugin implements Listener {
 
         // Set the shooter of the arrow to null to avoid looping reflections
         arrow.setShooter(null);
+    }
+
+    private void damageHelmet(Player player, ItemStack helmet) {
+        // Reduce helmet durability by the configured amount
+        helmet.setDurability((short) (helmet.getDurability() + helmetDamage));
+
+        // Check if the helmet is broken
+        if (helmet.getDurability() >= helmet.getType().getMaxDurability()) {
+            player.getInventory().setHelmet(new ItemStack(Material.AIR)); // Remove the helmet if it's broken
+            player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ITEM_BREAK, 1.0f, 1.0f);
+            player.sendMessage("Your helmet has broken!");
+        }
     }
 }
