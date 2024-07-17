@@ -1,10 +1,8 @@
 package org.rufftrigger.helmetme;
 
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.Particle;
-import org.bukkit.Sound;
+import org.bukkit.*;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
@@ -15,11 +13,15 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.Vector;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 import java.util.logging.Level;
 
 public class Main extends JavaPlugin implements Listener {
 
     private int helmetDamage;
+    private Map<UUID, UUID> arrowShooterMap; // Map to store arrow and shooter UUIDs
 
     @Override
     public void onEnable() {
@@ -28,6 +30,8 @@ public class Main extends JavaPlugin implements Listener {
             saveDefaultConfig();
             // Load configuration
             loadConfiguration();
+
+            arrowShooterMap = new HashMap<>(); // Initialize the map
 
             getServer().getPluginManager().registerEvents(this, this);
             getLogger().info("HelmetMe plugin has been enabled!");
@@ -55,6 +59,14 @@ public class Main extends JavaPlugin implements Listener {
         try {
             if (event.getEntity() instanceof Arrow) {
                 Arrow arrow = (Arrow) event.getEntity();
+                UUID shooterUUID = arrowShooterMap.get(arrow.getUniqueId());
+
+                if (shooterUUID != null) {
+                    LivingEntity shooter = getLivingEntityByUUID(shooterUUID);
+                    if (shooter != null) {
+                        arrow.setShooter(shooter);
+                    }
+                }
 
                 if (event.getHitEntity() instanceof Player) {
                     Player player = (Player) event.getHitEntity();
@@ -94,6 +106,14 @@ public class Main extends JavaPlugin implements Listener {
 
                 if (event.getDamager() instanceof Arrow) {
                     Arrow arrow = (Arrow) event.getDamager();
+                    UUID shooterUUID = arrowShooterMap.get(arrow.getUniqueId());
+
+                    if (shooterUUID != null) {
+                        LivingEntity shooter = getLivingEntityByUUID(shooterUUID);
+                        if (shooter != null) {
+                            arrow.setShooter(shooter);
+                        }
+                    }
 
                     // Check if the arrow hits the head area
                     if (arrow.getLocation().distance(player.getEyeLocation()) < 1.5) {
@@ -109,6 +129,12 @@ public class Main extends JavaPlugin implements Listener {
                             // Damage the helmet
                             damageHelmet(player, helmet);
                         }
+                    }
+                } else if (event.getDamager() instanceof LivingEntity) {
+                    LivingEntity damager = (LivingEntity) event.getDamager();
+                    if (damager instanceof Player || damager instanceof org.bukkit.entity.Monster) {
+                        // Handle the case where a living entity attacks the player
+                        // You can add specific logic here if needed
                     }
                 }
             }
@@ -142,9 +168,6 @@ public class Main extends JavaPlugin implements Listener {
 
             // Set the new velocity to the arrow
             arrow.setVelocity(reflectedVelocity);
-
-            // Set the shooter of the arrow to null to avoid looping reflections
-            arrow.setShooter(null);
         } catch (Exception e) {
             getLogger().log(Level.SEVERE, "Error in reflectArrow", e);
         }
@@ -153,10 +176,10 @@ public class Main extends JavaPlugin implements Listener {
     private void damageHelmet(Player player, ItemStack helmet) {
         try {
             // Reduce helmet durability by the configured amount
-            helmet.setDurability((short) (helmet.getDurability() + helmetDamage));
+            helmet.setAmount(helmet.getAmount() + helmetDamage);
 
             // Check if the helmet is broken
-            if (helmet.getDurability() >= helmet.getType().getMaxDurability()) {
+            if (helmet.getAmount() >= helmet.getType().getMaxStackSize()) {
                 player.getInventory().setHelmet(new ItemStack(Material.AIR)); // Remove the helmet if it's broken
                 player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ITEM_BREAK, 1.0f, 1.0f);
                 player.sendMessage("Your helmet has broken!");
@@ -164,5 +187,25 @@ public class Main extends JavaPlugin implements Listener {
         } catch (Exception e) {
             getLogger().log(Level.SEVERE, "Error in damageHelmet", e);
         }
+    }
+
+    private World getWorldByUUID(UUID uuid) {
+        for (World world : getServer().getWorlds()) {
+            if (world.getUID().equals(uuid)) {
+                return world;
+            }
+        }
+        return null;
+    }
+
+    private LivingEntity getLivingEntityByUUID(UUID uuid) {
+        for (World world : getServer().getWorlds()) {
+            for (LivingEntity entity : world.getLivingEntities()) {
+                if (entity.getUniqueId().equals(uuid)) {
+                    return entity;
+                }
+            }
+        }
+        return null;
     }
 }
