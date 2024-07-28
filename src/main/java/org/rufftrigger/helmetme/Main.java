@@ -157,7 +157,8 @@ public class Main extends JavaPlugin implements Listener {
                 return;
             }
 
-            // Play shield block sound
+            // Play Bell and shield block sound
+            player.getWorld().playSound(location, Sound.BLOCK_BELL_USE, 1.0f, 1.0f);
             player.getWorld().playSound(location, Sound.ITEM_SHIELD_BLOCK, 1.0f, 1.0f);
 
             // Display block particle effect
