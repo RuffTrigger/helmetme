@@ -25,6 +25,10 @@ import java.util.logging.Level;
 public class Main extends JavaPlugin implements Listener {
 
     private int helmetDamage;
+    /**
+     * Chance (0.0 - 1.0) that a helmet will be knocked off when the player is hit in the head.
+     */
+    private double helmetKnockOffChance;
     private List<Material> blockedHelmetMaterials;
 
     @Override
@@ -51,6 +55,11 @@ public class Main extends JavaPlugin implements Listener {
         try {
             FileConfiguration config = getConfig();
             helmetDamage = config.getInt("helmetDamage", 1);
+
+            // 0.20 = 20%
+            helmetKnockOffChance = config.getDouble("helmetKnockOffChance", 0.20);
+            if (helmetKnockOffChance < 0.0) helmetKnockOffChance = 0.0;
+            if (helmetKnockOffChance > 1.0) helmetKnockOffChance = 1.0;
 
             blockedHelmetMaterials = new ArrayList<>();
             List<String> materialNames = config.getStringList("blockedHelmetMaterials");
@@ -93,6 +102,13 @@ public class Main extends JavaPlugin implements Listener {
 
                     if (hitY >= headStartY && hitY <= headEndY) {
                         ItemStack helmet = player.getInventory().getHelmet();
+
+                        // New feature: 20% chance to knock the helmet off on a head hit.
+                        // If it gets knocked off, we skip the "helmet blocks the arrow" logic because the helmet is gone.
+                        if (tryKnockOffHelmet(player, arrow)) {
+                            return;
+                        }
+
                         if (isHelmetBlocked(helmet)) {
                             // Simulate shield block effects
                             simulateShieldBlock(player, arrow.getLocation());
@@ -123,6 +139,13 @@ public class Main extends JavaPlugin implements Listener {
                     // Check if the arrow hits the head area
                     if (arrow.getLocation().distance(player.getEyeLocation()) < 1.5) {
                         ItemStack helmet = player.getInventory().getHelmet();
+
+                        // New feature: 20% chance to knock the helmet off on a head hit.
+                        // If it gets knocked off, we let the damage proceed normally and skip the block/reflect logic.
+                        if (tryKnockOffHelmet(player, arrow)) {
+                            return;
+                        }
+
                         if (isHelmetBlocked(helmet)) {
                             // Simulate shield block effects
                             simulateShieldBlock(player, arrow.getLocation());
@@ -212,6 +235,55 @@ public class Main extends JavaPlugin implements Listener {
             }
         } catch (Exception e) {
             getLogger().log(Level.SEVERE, "Error in damageHelmet", e);
+        }
+    }
+
+    /**
+     * If the player is wearing a helmet, this gives it a chance to get knocked off and dropped.
+     *
+     * @return true if a helmet was knocked off, otherwise false.
+     */
+    private boolean tryKnockOffHelmet(Player player, Arrow arrow) {
+        try {
+            ItemStack helmet = player.getInventory().getHelmet();
+            if (helmet == null || helmet.getType() == Material.AIR) {
+                return false;
+            }
+
+            if (Math.random() > helmetKnockOffChance) {
+                return false;
+            }
+
+            // Remove from head
+            player.getInventory().setHelmet(new ItemStack(Material.AIR));
+
+            // Drop the helmet with a "shot off" velocity
+            Location dropLoc = player.getEyeLocation().clone().add(0, 0.2, 0);
+            var item = player.getWorld().dropItemNaturally(dropLoc, helmet);
+
+            Vector push;
+            if (arrow != null) {
+                // Push away from incoming arrow direction (arrow velocity points forward)
+                Vector incoming = arrow.getVelocity();
+                if (incoming.lengthSquared() > 0.0001) {
+                    push = incoming.clone().normalize().multiply(0.6).setY(0.35);
+                } else {
+                    push = player.getLocation().getDirection().multiply(-0.4).setY(0.35);
+                }
+            } else {
+                push = player.getLocation().getDirection().multiply(-0.4).setY(0.35);
+            }
+            item.setVelocity(push);
+
+            // Feedback
+            player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 0.6f, 0.6f);
+            player.getWorld().spawnParticle(Particle.CLOUD, player.getEyeLocation(), 8, 0.15, 0.15, 0.15, 0.02);
+            player.sendMessage("Your helmet got shot off!");
+
+            return true;
+        } catch (Exception e) {
+            getLogger().log(Level.SEVERE, "Error in tryKnockOffHelmet", e);
+            return false;
         }
     }
 }

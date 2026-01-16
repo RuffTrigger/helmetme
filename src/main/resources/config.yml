@@ -1,5 +1,8 @@
 # HelmetMe configuration
 helmetDamage: 1
+# Chance (0.0 - 1.0) for the helmet to be knocked off when hit in the head.
+# 0.20 = 20%
+helmetKnockOffChance: 0.20
 blockedHelmetMaterials:
   - IRON_HELMET
   - DIAMOND_HELMET

@@ -1,5 +1,5 @@
 name: HelmetMe
-version: 1.0
+version: 1.1
 main: org.rufftrigger.helmetme.Main
-api-version: 1.16
+api-version: 1.21
 description: A plugin that blocks arrows from hitting the player in the head if a player has a helmet on.
